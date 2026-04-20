@@ -2,10 +2,7 @@ import type { App } from 'vue'
 import { createPinia } from 'pinia'
 import { createPersistedState } from 'pinia-plugin-persistedstate'
 
-import useActivityStore from './modules/activity'
 import useAppStore from './modules/app'
-import useCompetitionStore from './modules/competition'
-import useMatchStore from './modules/match'
 import useUserStore from './modules/user'
 
 function setupStore(app: App) {
@@ -22,5 +19,5 @@ function setupStore(app: App) {
   app.use(store)
 }
 
-export { useActivityStore, useAppStore, useCompetitionStore, useMatchStore, useUserStore }
+export { useAppStore, useUserStore }
 export default setupStore

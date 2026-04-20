@@ -18,7 +18,7 @@
         <view class="flex flex-col gap-20rpx">
           <view class="info-row">
             <view class="i-mdi-account text-32rpx text-primary" />
-            <text>{{ activity.creator.nickname }} 发起</text>
+            <text>用户{{ activity.creatorUserId }} 发起</text>
           </view>
           <view class="info-row">
             <view class="i-mdi-badminton text-32rpx text-primary" />
@@ -56,26 +56,26 @@
       <view class="card mb-20rpx">
         <view class="mb-20rpx flex items-center justify-between">
           <text class="text-28rpx font-bold">
-            参与者 ({{ activity.currentPlayers.length }}/{{ activity.maxPlayers }})
+            参与者 ({{ activity.players.length }}/{{ activity.maxPlayers }})
           </text>
           <view class="progress-bar">
-            <view class="progress-fill" :style="{ width: `${(activity.currentPlayers.length / activity.maxPlayers) * 100}%` }" />
+            <view class="progress-fill" :style="{ width: `${(activity.players.length / activity.maxPlayers) * 100}%` }" />
           </view>
         </view>
 
         <view class="flex flex-wrap gap-24rpx">
-          <view v-for="player in activity.currentPlayers" :key="player.id" class="player-item">
-            <u-avatar :src="player.avatar" size="40" />
+          <view v-for="player in activity.players" :key="player.id" class="player-item">
+            <u-avatar :src="player.avatarUrl" size="40" />
             <text class="mt-8rpx text-24rpx">
               {{ player.nickname }}
             </text>
             <text class="text-20rpx text-[#999]">
-              {{ levelLabels[player.level] }}
+              ID: {{ player.userId }}
             </text>
           </view>
 
           <view
-            v-for="i in Math.max(0, activity.maxPlayers - activity.currentPlayers.length)"
+            v-for="i in Math.max(0, activity.maxPlayers - activity.players.length)"
             :key="`empty-${i}`"
             class="player-item"
           >
@@ -124,27 +124,19 @@
 </template>
 
 <script setup lang="ts">
-import type { ActivityStatus, ActivityType, PlayerLevel } from '@/store/modules/activity/types'
-import { useActivityStore } from '@/store'
+import type { ActivityDetail } from '@/api/activity/types'
+import { ActivityApi } from '@/api'
 
-const activityStore = useActivityStore()
-const activityId = ref('')
-const activity = computed(() => activityStore.getById(activityId.value))
+const activityId = ref(0)
+const activity = ref<ActivityDetail | null>(null)
 
-const typeLabels: Record<ActivityType, string> = {
+const typeLabels: Record<ActivityDetail['type'], string> = {
   singles: '单打',
   doubles: '双打',
   mixed: '混双',
 }
 
-const levelLabels: Record<PlayerLevel, string> = {
-  beginner: '新手',
-  elementary: '初级',
-  intermediate: '中级',
-  advanced: '高级',
-}
-
-const statusMap: Record<ActivityStatus, { text: string; color: string }> = {
+const statusMap: Record<ActivityDetail['status'], { text: string; color: string }> = {
   recruiting: { text: '报名中', color: '#21d59d' },
   full: { text: '已满', color: '#fe9831' },
   ongoing: { text: '进行中', color: '#3c9cff' },
@@ -152,11 +144,11 @@ const statusMap: Record<ActivityStatus, { text: string; color: string }> = {
   cancelled: { text: '已取消', color: '#fa4e62' },
 }
 
-function getStatusText(status: ActivityStatus) {
+function getStatusText(status: ActivityDetail['status']) {
   return statusMap[status]?.text ?? status
 }
 
-function getStatusColor(status: ActivityStatus) {
+function getStatusColor(status: ActivityDetail['status']) {
   return statusMap[status]?.color ?? '#999'
 }
 
@@ -169,17 +161,31 @@ const feeText = computed(() => {
 })
 
 function handleJoin() {
-  activityStore.joinActivity(activityId.value, {
-    id: 'me',
+  if (!activityId.value)
+    return
+  ActivityApi.joinActivity(activityId.value, {
+    userId: 1,
     nickname: '球友小王',
-    avatar: '',
-    level: 'intermediate',
+    avatarUrl: '',
   })
   uni.$u.toast('报名成功')
+  loadDetail()
+}
+
+async function loadDetail() {
+  if (!activityId.value)
+    return
+  try {
+    activity.value = await ActivityApi.getActivityDetail(activityId.value)
+  }
+  catch {
+    activity.value = null
+  }
 }
 
 onLoad((options: any) => {
-  activityId.value = options?.id || ''
+  activityId.value = Number(options?.id || 0)
+  loadDetail()
 })
 </script>
 

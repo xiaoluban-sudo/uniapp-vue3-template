@@ -2,7 +2,7 @@
 // # 在升级完后，会自动添加很多无用依赖，这需要删除以减小依赖包体积
 // # 只需要执行下面的命令即可
 
-import { exec } from 'node:child_process';
+import { exec } from 'node:child_process'
 
 // 定义要执行的命令
 const dependencies = [
@@ -20,17 +20,17 @@ const dependencies = [
   '@dcloudio/uni-mp-harmony',
   // vue 已经内置了 @vue/runtime-core，这里移除掉
   '@vue/runtime-core',
-];
+]
 
 // 使用exec执行命令
 exec(`pnpm remove ${dependencies.join(' ')}`, (error, stdout, stderr) => {
   if (error) {
     // 如果有错误，打印错误信息
-    console.error(`执行出错: ${error}`);
-    return;
+    console.error(`执行出错: ${error}`)
+    return
   }
   // 打印正常输出
-  console.log(`stdout: ${stdout}`);
+  console.log(`stdout: ${stdout}`)
   // 如果有错误输出，也打印出来
-  console.error(`stderr: ${stderr}`);
-});
+  console.error(`stderr: ${stderr}`)
+})

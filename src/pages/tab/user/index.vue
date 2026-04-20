@@ -4,18 +4,21 @@
     <view class="profile-header">
       <view class="profile-content">
         <view class="flex items-center gap-24rpx">
-          <u-avatar src="" size="70" />
-          <view>
+          <u-avatar :src="avatar || ''" size="70" />
+          <view class="min-w-0 flex-1">
             <text class="block text-36rpx text-white font-bold">
-              球友小王
+              {{ user_name || '微信用户' }}
             </text>
             <view class="mt-8rpx flex items-center gap-12rpx">
               <view class="level-badge">
-                中级
+                {{ level || '未定级' }}
               </view>
               <text class="text-24rpx text-white/70">
-                球龄 3年
+                球龄 {{ userYears }}年
               </text>
+              <view class="profile-edit-btn" @click="toProfileEdit">
+                <view class="i-mdi-pencil text-24rpx text-white" />
+              </view>
             </view>
           </view>
         </view>
@@ -39,7 +42,7 @@
           </view>
           <view class="text-center">
             <text class="block text-36rpx text-white font-bold">
-              3年
+              {{ userYears }}年
             </text>
             <text class="text-22rpx text-white/70">
               球龄
@@ -100,17 +103,43 @@
       </u-cell-group>
     </view>
 
+    <view class="logout-wrap">
+      <u-button
+        type="error"
+        plain
+        text="退出登录"
+        custom-style="height: 80rpx; border-radius: 40rpx;"
+        @click="handleLogout"
+      />
+    </view>
+
     <view class="h-130rpx" />
     <custom-tabbar :current="3" />
   </view>
 </template>
 
 <script setup lang="ts">
-import { usePermission } from '@/hooks'
-import { useMatchStore } from '@/store'
+import type { MatchStatsData } from '@/api/user/types'
+import { storeToRefs } from 'pinia'
+import { UserApi } from '@/api'
+import { LOGIN_PATH } from '@/router'
+import { useUserStore } from '@/store'
+import { isLogin } from '@/utils/auth'
 
-const matchStore = useMatchStore()
-const stats = computed(() => matchStore.stats)
+const userStore = useUserStore()
+const stats = ref<MatchStatsData>({
+  totalMatches: 0,
+  wins: 0,
+  losses: 0,
+  winRate: 0,
+  currentStreak: 0,
+  bestStreak: 0,
+  thisMonth: 0,
+  thisWeek: 0,
+})
+const { avatar, user_name, level, years_of_playing } = storeToRefs(userStore)
+const userYears = computed(() => Number(years_of_playing?.value ?? 0))
+const loadingInfo = ref(false)
 
 function toRecord() {
   uni.switchTab({ url: '/pages/tab/record/index' })
@@ -124,9 +153,46 @@ function toTheme() {
   uni.navigateTo({ url: '/pages/common/theme/index' })
 }
 
+function toProfileEdit() {
+  uni.navigateTo({ url: '/pages/common/profile-edit/index' })
+}
+
+function handleLogout() {
+  uni.showModal({
+    title: '退出登录',
+    content: '确认退出当前账号吗？',
+    success: async (res) => {
+      if (!res.confirm)
+        return
+
+      await userStore.logout()
+      uni.$u.toast('已退出登录')
+      setTimeout(() => {
+        uni.reLaunch({ url: LOGIN_PATH })
+      }, 300)
+    },
+  })
+}
+
 onShow(async () => {
-  const hasPermission = await usePermission()
-  console.log(hasPermission ? '已登录' : '未登录')
+  if (!isLogin()) {
+    uni.redirectTo({ url: LOGIN_PATH })
+    return
+  }
+  if (loadingInfo.value)
+    return
+  loadingInfo.value = true
+  try {
+    await userStore.info()
+    const res = await UserApi.myStats()
+    stats.value = res.stats
+  }
+  catch {
+    uni.$u.toast('用户信息获取失败')
+  }
+  finally {
+    loadingInfo.value = false
+  }
 })
 </script>
 
@@ -134,6 +200,16 @@ onShow(async () => {
 .profile-header {
   background: linear-gradient(135deg, #21d59d 0%, #1ab389 100%);
   border-radius: 0 0 40rpx 40rpx;
+}
+
+.profile-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  background: rgb(255 255 255 / 24%);
+  border-radius: 50%;
 }
 
 .profile-content {
@@ -155,5 +231,9 @@ onShow(async () => {
   padding-top: 40rpx;
   margin-top: 40rpx;
   border-top: 1rpx solid rgb(255 255 255 / 20%);
+}
+
+.logout-wrap {
+  padding: 28rpx 30rpx 0;
 }
 </style>

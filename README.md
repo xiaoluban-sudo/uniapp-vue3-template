@@ -208,6 +208,14 @@ utils
 
 推荐使用 `pnpm` 作为包管理工具。
 
+后端服务（`server`）启动前，请先复制环境变量模板并填写：
+
+```bash
+cp server/.env.example server/.env
+```
+
+> `server/.env` 包含数据库、微信登录密钥等敏感信息，已配置为不提交到 Git。请仅在本地或 CI 环境注入。
+
 ```bash
 # 安装依赖
 pnpm install

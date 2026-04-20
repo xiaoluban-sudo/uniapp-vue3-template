@@ -63,9 +63,27 @@
           }
         },
         {
+          "path": "drafts/index",
+          "style": {
+            "navigationBarTitleText": "我的草稿"
+          }
+        },
+        {
+          "path": "my-competitions/index",
+          "style": {
+            "navigationBarTitleText": "比赛列表"
+          }
+        },
+        {
           "path": "match-detail/index",
           "style": {
             "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "match-info/index",
+          "style": {
+            "navigationBarTitleText": "对阵详情"
           }
         },
         {
@@ -104,6 +122,12 @@
           "style": {
             "navigationBarTitleText": "主题设置"
           }
+        },
+        {
+          "path": "profile-edit/index",
+          "style": {
+            "navigationBarTitleText": "完善个人信息"
+          }
         }
       ]
     }
@@ -115,6 +139,7 @@
     }
   },
   "tabBar": {
+    "custom": true,
     "color": "#999999",
     "selectedColor": "#21d59d",
     "borderStyle": "black",

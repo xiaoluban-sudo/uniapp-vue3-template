@@ -88,7 +88,7 @@
         </text>
       </view>
 
-      <view v-for="record in matchStore.records" :key="record.id" class="card mb-20rpx">
+      <view v-for="record in records" :key="record.id" class="card mb-20rpx">
         <view class="mb-16rpx flex items-center justify-between">
           <view class="flex items-center gap-12rpx">
             <view class="result-badge" :class="record.winner === 'A' ? 'win' : 'lose'">
@@ -104,36 +104,29 @@
         </view>
 
         <view class="mb-16rpx flex gap-16rpx">
-          <view v-for="(game, gi) in record.games" :key="gi" class="score-item">
-            <text class="text-22rpx text-[#999]">
-              G{{ gi + 1 }}
-            </text>
+          <view class="score-item">
             <text
               class="text-26rpx font-bold"
-              :style="{ color: game.playerAScore > game.playerBScore ? '#21d59d' : '#fa4e62' }"
+              :style="{ color: record.scoreA > record.scoreB ? '#21d59d' : '#fa4e62' }"
             >
-              {{ game.playerAScore }}:{{ game.playerBScore }}
+              {{ record.scoreA }}:{{ record.scoreB }}
             </text>
           </view>
         </view>
 
         <view class="flex items-center gap-20rpx text-22rpx text-[#999]">
-          <view class="flex items-center gap-6rpx">
+          <view v-if="record.date" class="flex items-center gap-6rpx">
             <view class="i-mdi-calendar text-24rpx" />
             <text>{{ record.date }}</text>
           </view>
-          <view class="flex items-center gap-6rpx">
+          <view v-if="record.venue" class="flex items-center gap-6rpx">
             <view class="i-mdi-map-marker text-24rpx" />
             <text>{{ record.venue }}</text>
-          </view>
-          <view class="flex items-center gap-6rpx">
-            <view class="i-mdi-clock-outline text-24rpx" />
-            <text>{{ record.duration }}分钟</text>
           </view>
         </view>
       </view>
 
-      <view v-if="matchStore.records.length === 0" class="card text-center text-[#999]">
+      <view v-if="records.length === 0 && !loading" class="card text-center text-[#999]">
         <text>暂无比赛记录</text>
       </view>
     </view>
@@ -144,14 +137,45 @@
 </template>
 
 <script setup lang="ts">
-import { useMatchStore } from '@/store'
+import type { MatchRecordItem, MatchStatsData } from '@/api/user/types'
+import { UserApi } from '@/api'
 
-const matchStore = useMatchStore()
-const stats = computed(() => matchStore.stats)
+const stats = ref<MatchStatsData>({
+  totalMatches: 0,
+  wins: 0,
+  losses: 0,
+  winRate: 0,
+  currentStreak: 0,
+  bestStreak: 0,
+  thisMonth: 0,
+  thisWeek: 0,
+})
+const records = ref<MatchRecordItem[]>([])
+const loading = ref(false)
+
+async function fetchStats() {
+  if (loading.value) return
+  loading.value = true
+  try {
+    const res = await UserApi.myStats()
+    stats.value = res.stats
+    records.value = res.records
+  }
+  catch {
+    uni.$u.toast('获取战绩失败')
+  }
+  finally {
+    loading.value = false
+  }
+}
 
 function toScoring() {
   uni.navigateTo({ url: '/pages/activity/scoring/index' })
 }
+
+onShow(() => {
+  void fetchStats()
+})
 </script>
 
 <style scoped lang="scss">

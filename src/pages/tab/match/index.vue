@@ -15,7 +15,7 @@
 
     <!-- Activity list -->
     <z-paging ref="pagingRef" v-model="dataList" @query="queryList">
-      <view class="px-30rpx pt-20rpx">
+      <view class="list-content px-30rpx">
         <view
           v-for="activity in dataList"
           :key="activity.id"
@@ -24,9 +24,9 @@
         >
           <view class="mb-16rpx flex items-center justify-between">
             <view class="flex items-center gap-12rpx">
-              <u-avatar :src="activity.creator.avatar" size="32" />
+              <u-avatar src="" size="32" />
               <text class="text-26rpx">
-                {{ activity.creator.nickname }}
+                用户{{ activity.creatorUserId }}
               </text>
             </view>
             <view
@@ -56,7 +56,7 @@
                   {{ typeLabels[activity.type] }}
                 </view>
                 <view class="info-badge">
-                  {{ activity.currentPlayers.length }}/{{ activity.maxPlayers }}人
+                  {{ activity.joinedCount }}/{{ activity.maxPlayers }}人
                 </view>
               </view>
               <text class="text-28rpx text-primary font-bold">
@@ -79,16 +79,14 @@
 </template>
 
 <script setup lang="ts">
-import type { Activity, ActivityStatus, ActivityType } from '@/store/modules/activity/types'
-import { useActivityStore } from '@/store'
+import type { ActivityListItem } from '@/api/activity/types'
+import { ActivityApi } from '@/api'
 
-const activityStore = useActivityStore()
+const currentFilter = ref<ActivityListItem['status'] | ''>('')
+const pagingRef = ref<ZPagingRef<ActivityListItem> | null>(null)
+const dataList = ref<ActivityListItem[]>([])
 
-const currentFilter = ref<ActivityStatus | ''>('')
-const pagingRef = ref<ZPagingRef<Activity> | null>(null)
-const dataList = ref<Activity[]>([])
-
-const typeLabels: Record<ActivityType, string> = {
+const typeLabels: Record<ActivityListItem['type'], string> = {
   singles: '单打',
   doubles: '双打',
   mixed: '混双',
@@ -96,12 +94,12 @@ const typeLabels: Record<ActivityType, string> = {
 
 const filterTabs = [
   { label: '全部', value: '' as const },
-  { label: '报名中', value: 'recruiting' as ActivityStatus },
-  { label: '已满', value: 'full' as ActivityStatus },
-  { label: '已结束', value: 'finished' as ActivityStatus },
+  { label: '报名中', value: 'recruiting' as const },
+  { label: '已满', value: 'full' as const },
+  { label: '已结束', value: 'finished' as const },
 ]
 
-const statusMap: Record<ActivityStatus, { text: string; color: string }> = {
+const statusMap: Record<ActivityListItem['status'], { text: string; color: string }> = {
   recruiting: { text: '报名中', color: '#21d59d' },
   full: { text: '已满', color: '#fe9831' },
   ongoing: { text: '进行中', color: '#3c9cff' },
@@ -109,27 +107,31 @@ const statusMap: Record<ActivityStatus, { text: string; color: string }> = {
   cancelled: { text: '已取消', color: '#fa4e62' },
 }
 
-function getStatusText(status: ActivityStatus) {
+function getStatusText(status: ActivityListItem['status']) {
   return statusMap[status]?.text ?? status
 }
 
-function getStatusColor(status: ActivityStatus) {
+function getStatusColor(status: ActivityListItem['status']) {
   return statusMap[status]?.color ?? '#999'
 }
 
-function setFilter(value: ActivityStatus | '') {
+function setFilter(value: ActivityListItem['status'] | '') {
   currentFilter.value = value
   pagingRef.value?.reload()
 }
 
-function queryList(pageNo: number, _pageSize: number) {
-  setTimeout(() => {
-    const filtered = activityStore.filteredList(currentFilter.value || undefined)
+async function queryList(pageNo: number, _pageSize: number) {
+  try {
+    const list = await ActivityApi.listActivities()
+    const filtered = currentFilter.value ? list.filter(item => item.status === currentFilter.value) : list
     pagingRef.value?.complete(pageNo === 1 ? filtered : [])
-  }, 300)
+  }
+  catch {
+    pagingRef.value?.complete(false)
+  }
 }
 
-function toDetail(id: string) {
+function toDetail(id: number) {
   uni.navigateTo({ url: `/pages/activity/detail/index?id=${id}` })
 }
 
@@ -140,10 +142,18 @@ function toCreate() {
 
 <style scoped lang="scss">
 .filter-bar {
+  position: relative;
+  z-index: 30;
   display: flex;
   gap: 0;
   padding: 16rpx 30rpx;
   background: #fff;
+  border-bottom: 1rpx solid #f2f3f5;
+}
+
+.list-content {
+  // 给 z-paging 列表留出筛选栏高度，避免首屏卡片被遮挡
+  padding-top: 112rpx;
 }
 
 .filter-tab {

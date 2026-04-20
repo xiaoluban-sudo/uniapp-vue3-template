@@ -8,15 +8,15 @@ import { clearToken, setToken } from '@/utils/auth'
 const useUserStore = defineStore('user', {
   state: (): UserState => ({
     user_id: '',
-    user_name: '江阳小道',
+    user_name: '',
     avatar: '',
+    gender: 'unknown',
+    years_of_playing: 0,
+    level: '',
+    real_name: '',
+    phone: '',
     token: '',
   }),
-  getters: {
-    userInfo(state: UserState): UserState {
-      return { ...state }
-    },
-  },
   actions: {
     // 设置用户的信息
     setInfo(partial: Partial<UserState>) {
@@ -28,8 +28,17 @@ const useUserStore = defineStore('user', {
     },
     // 获取用户信息
     async info() {
-      const result = await UserApi.profile()
-      this.setInfo(result)
+      const result = await UserApi.me()
+      this.setInfo({
+        user_id: result.user_id ? String(result.user_id) : '',
+        user_name: result.user_name ?? '',
+        avatar: result.avatar ?? '',
+        gender: result.gender ?? 'unknown',
+        years_of_playing: result.years_of_playing ?? 0,
+        level: result.level ?? '',
+        real_name: result.real_name ?? '',
+        phone: result.phone ?? '',
+      })
     },
     // 异步登录并存储token
     login(loginForm: LoginReq) {
@@ -47,9 +56,16 @@ const useUserStore = defineStore('user', {
     },
     // Logout
     async logout() {
-      await UserApi.logout()
-      this.resetInfo()
-      clearToken()
+      try {
+        await UserApi.logout()
+      }
+      catch {
+        // 当前后端未实现登出接口时，仍然允许本地退出
+      }
+      finally {
+        this.resetInfo()
+        clearToken()
+      }
     },
     // 小程序授权登录
     authLogin(provider: providerType = 'weixin') {
@@ -58,7 +74,11 @@ const useUserStore = defineStore('user', {
           provider,
           success: async (result: UniApp.LoginRes) => {
             if (result.code) {
-              const res = await UserApi.loginByCode({ code: result.code })
+              const res = await UserApi.wxLoginByCode({ code: result.code })
+              if (res.token) {
+                setToken(res.token)
+                this.token = res.token
+              }
               resolve(res)
             }
             else {

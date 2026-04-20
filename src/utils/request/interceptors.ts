@@ -10,7 +10,7 @@ import storage from '@/utils/storage'
 import { showMessage } from './status'
 
 // 重试队列，每一项将是一个待执行的函数形式
-let requestQueue: (() => void)[] = []
+let requestQueue: Array<{ resolve: (value: HttpResponse<any> | PromiseLike<HttpResponse<any>>) => void; reject: (reason?: any) => void }> = []
 
 // 防止重复提交
 const repeatSubmit = (config: HttpRequestConfig) => {
@@ -48,22 +48,31 @@ const refreshToken = async (http: HttpRequestAbstract, config: HttpRequestConfig
   if (!isRefreshing) {
     // 修改登录状态为true
     isRefreshing = true
-    // 等待登录完成
-    await useUserStore().authLogin()
-    // 登录完成之后，开始执行队列请求
-    requestQueue.forEach(cb => cb())
-    // 重试完了清空这个队列
-    requestQueue = []
-    isRefreshing = false
-    // 重新执行本次请求
-    return http.request(config)
+    try {
+      // 等待登录完成
+      await useUserStore().authLogin()
+      // 登录完成之后，开始执行队列请求
+      requestQueue.forEach(({ resolve }) => {
+        resolve(http.request(config))
+      })
+      // 重试完了清空这个队列
+      requestQueue = []
+      // 重新执行本次请求
+      return http.request(config)
+    }
+    catch (error) {
+      requestQueue.forEach(({ reject }) => reject(error))
+      requestQueue = []
+      throw error
+    }
+    finally {
+      isRefreshing = false
+    }
   }
 
-  return new Promise<HttpResponse<any>>((resolve) => {
+  return new Promise<HttpResponse<any>>((resolve, reject) => {
     // 将resolve放进队列，用一个函数形式来保存，等登录后直接执行
-    requestQueue.push(() => {
-      resolve(http.request(config))
-    })
+    requestQueue.push({ resolve, reject })
   })
 }
 
@@ -119,8 +128,20 @@ function responseInterceptors(http: HttpRequestAbstract) {
     // 自定义参数
     const custom = config?.custom
 
-    // 登录状态失效，重新登录
+    // 登录状态失效，重新登录（避免对登录接口自身做刷新重试导致递归）
     if (data.code === 401) {
+      const url = String(config?.url ?? '')
+      const isAuthApi = url.includes('/auth/login-by-code')
+      const skipRefresh = custom?.auth === false || custom?.skipRefresh === true || isAuthApi
+      if (skipRefresh)
+        return Promise.reject(data)
+      // 同一个请求只允许触发一次 refresh，避免死循环导致栈溢出
+      if (custom?._retryRefresh === true)
+        return Promise.reject(data)
+      if (config.custom)
+        config.custom._retryRefresh = true
+      else
+        config.custom = { _retryRefresh: true }
       return refreshToken(http, config)
     }
 

@@ -104,10 +104,10 @@
 </template>
 
 <script setup lang="ts">
-import type { MatchGame } from '@/store/modules/match/types'
-import { useMatchStore } from '@/store'
-
-const matchStore = useMatchStore()
+interface MatchGame {
+  playerAScore: number
+  playerBScore: number
+}
 
 const playerA = ref('玩家A')
 const playerB = ref('玩家B')
@@ -179,20 +179,6 @@ function handleEndGame() {
 
 function finishMatch(aWins: number, bWins: number) {
   const winner = aWins > bWins ? 'A' : 'B'
-  const duration = Math.round((Date.now() - startTime.value) / 60000) || 1
-
-  matchStore.addRecord({
-    id: Date.now().toString(),
-    type: 'singles',
-    playerA: playerA.value,
-    playerB: playerB.value,
-    games: [...finishedGames.value],
-    winner: winner as 'A' | 'B',
-    duration,
-    date: new Date().toISOString().split('T')[0],
-    venue: '',
-  })
-
   const winnerName = winner === 'A' ? playerA.value : playerB.value
   uni.showModal({
     title: '比赛结束',

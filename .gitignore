@@ -27,3 +27,29 @@ unpackage
 # pnpm-lock.yaml
 yarn.lock
 package-lock.json
+
+# server secrets
+server/.env
+
+# env files / secrets
+.env
+.env.*
+!.env.example
+env/.env
+env/.env.*
+server/.env.*
+!server/.env.example
+
+# keys / certificates
+*.key
+*.pem
+scripts/*.key
+
+# local build temp files
+vite.config.ts.timestamp-*.mjs
+*.tsbuildinfo
+.cache
+coverage
+
+# nested repo metadata (avoid accidental nested git)
+server/.git

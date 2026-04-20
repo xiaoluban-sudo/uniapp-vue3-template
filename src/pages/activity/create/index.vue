@@ -112,9 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { useActivityStore } from '@/store'
-
-const activityStore = useActivityStore()
+import { ActivityApi } from '@/api'
 
 const form = reactive({
   title: '',
@@ -142,7 +140,7 @@ const feeTypes = [
   { label: '固定', value: 'fixed' as const },
 ]
 
-function handleSubmit() {
+async function handleSubmit() {
   if (!form.title) {
     uni.$u.toast('请输入活动标题')
     return
@@ -156,28 +154,27 @@ function handleSubmit() {
     return
   }
 
-  activityStore.addActivity({
-    id: Date.now().toString(),
-    title: form.title,
-    creator: { id: 'me', nickname: '球友小王', avatar: '', level: 'intermediate' },
-    type: form.type,
-    date: form.date,
-    startTime: form.startTime,
-    endTime: form.endTime || '18:00',
-    venue: form.venue,
-    address: form.address || form.venue,
-    maxPlayers: form.maxPlayers,
-    currentPlayers: [{ id: 'me', nickname: '球友小王', avatar: '', level: 'intermediate' }],
-    fee: form.feeType === 'free' ? 0 : Number(form.fee),
-    feeType: form.feeType,
-    levelRequirement: ['beginner', 'elementary', 'intermediate', 'advanced'],
-    status: 'recruiting',
-    description: form.description,
-    createdAt: new Date().toISOString(),
-  })
-
-  uni.$u.toast('发布成功')
-  setTimeout(() => uni.navigateBack(), 500)
+  try {
+    await ActivityApi.createActivity({
+      title: form.title,
+      type: form.type,
+      date: form.date,
+      startTime: form.startTime,
+      endTime: form.endTime || '18:00',
+      venue: form.venue,
+      address: form.address || form.venue,
+      maxPlayers: form.maxPlayers,
+      fee: form.feeType === 'free' ? '0' : String(form.fee),
+      feeType: form.feeType,
+      description: form.description,
+      creatorUserId: 1,
+    })
+    uni.$u.toast('发布成功')
+    setTimeout(() => uni.navigateBack(), 500)
+  }
+  catch {
+    uni.$u.toast('发布失败')
+  }
 }
 </script>
 
